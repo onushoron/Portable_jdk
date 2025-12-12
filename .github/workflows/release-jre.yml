@@ -49,8 +49,27 @@ jobs:
         env:
           JDK_VERSION: ${{ github.event.inputs.jdk_version || '17' }}
       
-      - name: Build JRE
-        run: npm run build-jre:${{ github.event.inputs.jdk_version || '17' }}
+      - name: Build JRE (Windows - Native Only)
+        if: runner.os == 'Windows'
+        run: |
+          npm run build-jre:windows
+          npm run build-jre:windows-arm
+        env:
+          JDK_VERSION: ${{ github.event.inputs.jdk_version || '17' }}
+      
+      - name: Build JRE (macOS - Native Only)
+        if: runner.os == 'macOS'
+        run: |
+          npm run build-jre:mac-x64
+          npm run build-jre:mac-arm
+        env:
+          JDK_VERSION: ${{ github.event.inputs.jdk_version || '17' }}
+      
+      - name: Build JRE (Linux - Native Only)
+        if: runner.os == 'Linux'
+        run: |
+          npm run build-jre:linux
+          npm run build-jre:linux-arm
         env:
           JDK_VERSION: ${{ github.event.inputs.jdk_version || '17' }}
       
