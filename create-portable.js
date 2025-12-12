@@ -498,7 +498,6 @@ async function main() {
       log.error(`Failed: ${failedCount}`);
     }
     log.info(`Location: ${OUTPUT_DIR}`);
-    log.info(`Location: ${OUTPUT_DIR}`);
     console.log();
     log.info('Next steps:');
     console.log('  1. Test each portable version on target OS');
