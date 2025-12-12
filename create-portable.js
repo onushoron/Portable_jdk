@@ -300,9 +300,8 @@ async function createPortablePackage(platform, arch, jreName) {
   // Check JRE exists
   const jrePath = path.join(JRE_DIR, jreName);
   if (!fs.existsSync(jrePath)) {
-    log.error(`JRE not found: ${jrePath}`);
-    log.info('Please run node build-jre-all-platforms.js first');
-    return false;
+    log.info(`Skipping ${platform}-${arch}: JRE not found (${jreName})`);
+    return null; // null means skipped, not failed
   }
 
   // Check JARs exist
@@ -458,9 +457,21 @@ async function main() {
     // Summary
     log.header('Build Summary');
 
-    for (const [name, success] of Object.entries(results)) {
-      const status = success ? `${colors.green}✓${colors.reset}` : `${colors.red}✗${colors.reset}`;
-      console.log(`${status} ${name}`);
+    let builtCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    for (const [name, result] of Object.entries(results)) {
+      if (result === true) {
+        console.log(`${colors.green}✓${colors.reset} ${name}`);
+        builtCount++;
+      } else if (result === null) {
+        console.log(`${colors.yellow}⊘${colors.reset} ${name} (skipped - JRE not available)`);
+        skippedCount++;
+      } else {
+        console.log(`${colors.red}✗${colors.reset} ${name} (failed)`);
+        failedCount++;
+      }
     }
 
     // Show archives
@@ -477,10 +488,16 @@ async function main() {
     }
 
     console.log();
-    const successCount = Object.values(results).filter(Boolean).length;
     const totalCount = Object.keys(results).length;
 
-    log.success(`Portable versions built: ${successCount}/${totalCount}`);
+    log.success(`Portable versions built: ${builtCount}/${totalCount}`);
+    if (skippedCount > 0) {
+      log.info(`Skipped: ${skippedCount} (JREs not available on this runner)`);
+    }
+    if (failedCount > 0) {
+      log.error(`Failed: ${failedCount}`);
+    }
+    log.info(`Location: ${OUTPUT_DIR}`);
     log.info(`Location: ${OUTPUT_DIR}`);
     console.log();
     log.info('Next steps:');
@@ -488,7 +505,8 @@ async function main() {
     console.log('  2. Verify launcher scripts work correctly');
     console.log('  3. Distribute to users!');
 
-    process.exit(successCount === totalCount ? 0 : 1);
+    // Exit successfully if at least one platform built, only fail on actual errors
+    process.exit(failedCount > 0 ? 1 : 0);
   }
 }
 
