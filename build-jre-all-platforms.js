@@ -327,6 +327,18 @@ function buildWindowsX64() {
   return buildJre('Windows x64', jdkPath, 'jre-win-x64');
 }
 
+// Build Windows ARM64
+function buildWindowsARM64() {
+  log.header('Building Windows ARM64 JRE');
+  const jdkPath = findJdkPath('windows-arm64');
+
+  if (!checkJdk('Windows ARM64', jdkPath)) {
+    return false;
+  }
+
+  return buildJre('Windows ARM64', jdkPath, 'jre-win-arm64');
+}
+
 // Build macOS x64
 function buildMacOSX64() {
   log.header('Building macOS x64 JRE');
@@ -428,6 +440,7 @@ async function main() {
   // Platform builders
   const builders = {
     'windows-x64': { name: 'Windows x64', fn: buildWindowsX64 },
+    'windows-arm64': { name: 'Windows ARM64', fn: buildWindowsARM64 },
     'macos-x64': { name: 'macOS x64', fn: buildMacOSX64 },
     'macos-arm64': { name: 'macOS ARM64', fn: buildMacOSARM64 },
     'linux-x64': { name: 'Linux x64', fn: buildLinuxX64 },
