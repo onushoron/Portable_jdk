@@ -14,7 +14,20 @@ const AdmZip = require('adm-zip');
 const VERSION = '1.0.0';
 const OUTPUT_DIR = path.join(process.cwd(), 'portable-releases');
 const JRE_DIR = path.join(process.cwd(), 'jre-builds');
-const JAR_FILE = 'aspose-words-25.10.jar';
+const JARS_DIR = path.join(process.cwd(), 'jars');
+
+// Find JAR files
+function findJarFiles() {
+  const jarsDir = JARS_DIR;
+  if (!fs.existsSync(jarsDir)) {
+    return [];
+  }
+
+  const files = fs.readdirSync(jarsDir);
+  return files.filter(f => f.endsWith('.jar')).map(f => path.join(jarsDir, f));
+}
+
+const JAR_FILES = findJarFiles();
 
 // Colors
 const colors = {
@@ -106,7 +119,8 @@ function formatSize(bytes) {
 }
 
 // Create Windows launcher
-function createLauncherWindows(pkgDir) {
+function createLauncherWindows(pkgDir, jarFiles) {
+  const jarList = jarFiles.map(j => path.basename(j)).join(', ');
   const launcher = `@echo off
 setlocal
 
@@ -114,7 +128,6 @@ REM Get script directory
 set "APP_DIR=%~dp0"
 set "JRE_DIR=%APP_DIR%jre"
 set "JAVA_EXE=%JRE_DIR%\\bin\\java.exe"
-set "JAR_FILE=%APP_DIR%aspose-words-25.10.jar"
 
 REM Check if JRE exists
 if not exist "%JAVA_EXE%" (
@@ -124,7 +137,8 @@ if not exist "%JAVA_EXE%" (
     exit /b 1
 )
 
-REM Run Aspose.Words
+REM Run with first JAR file (add your logic here)
+set "JAR_FILE=%APP_DIR%${path.basename(jarFiles[0])}"
 "%JAVA_EXE%" -jar "%JAR_FILE%" %*
 `;
 
@@ -134,14 +148,14 @@ REM Run Aspose.Words
 }
 
 // Create Unix launcher
-function createLauncherUnix(pkgDir) {
+function createLauncherUnix(pkgDir, jarFiles) {
   const launcher = `#!/bin/bash
 
 # Get script directory
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 JRE_DIR="$APP_DIR/jre"
 JAVA_BIN="$JRE_DIR/bin/java"
-JAR_FILE="$APP_DIR/aspose-words-25.10.jar"
+JAR_FILE="$APP_DIR/${path.basename(jarFiles[0])}"
 
 # Check if JRE exists
 if [ ! -f "$JAVA_BIN" ]; then
@@ -150,7 +164,7 @@ if [ ! -f "$JAVA_BIN" ]; then
     exit 1
 fi
 
-# Run Aspose.Words
+# Run with JAR file
 "$JAVA_BIN" -jar "$JAR_FILE" "$@"
 `;
 
@@ -291,10 +305,10 @@ async function createPortablePackage(platform, arch, jreName) {
     return false;
   }
 
-  // Check JAR exists
-  if (!fs.existsSync(JAR_FILE)) {
-    log.error(`JAR file not found: ${JAR_FILE}`);
-    log.info('Please ensure aspose-words-25.10.jar is in the current directory');
+  // Check JARs exist
+  if (JAR_FILES.length === 0) {
+    log.error(`No JAR files found in: ${JARS_DIR}`);
+    log.info('Please add JAR files to the jars/ directory');
     return false;
   }
 
@@ -312,15 +326,17 @@ async function createPortablePackage(platform, arch, jreName) {
   log.info('Copying JRE...');
   copyDirectory(jrePath, path.join(pkgDir, 'jre'));
 
-  // Copy JAR
-  log.info('Copying JAR file...');
-  fs.copyFileSync(JAR_FILE, path.join(pkgDir, JAR_FILE));
+  // Copy JAR files
+  log.info(`Copying ${JAR_FILES.length} JAR file(s)...`);
+  for (const jarFile of JAR_FILES) {
+    fs.copyFileSync(jarFile, path.join(pkgDir, path.basename(jarFile)));
+  }
 
   // Create launcher
   if (platform === 'windows') {
-    createLauncherWindows(pkgDir);
+    createLauncherWindows(pkgDir, JAR_FILES);
   } else {
-    createLauncherUnix(pkgDir);
+    createLauncherUnix(pkgDir, JAR_FILES);
   }
 
   // Create README
@@ -363,11 +379,13 @@ function checkPrerequisites() {
     missing = true;
   }
 
-  // Check JAR file
-  if (!fs.existsSync(JAR_FILE)) {
-    log.error(`JAR file not found: ${JAR_FILE}`);
-    log.info('Please ensure aspose-words-25.10.jar is in the current directory');
+  // Check JAR files
+  if (JAR_FILES.length === 0) {
+    log.error(`No JAR files found in: ${JARS_DIR}`);
+    log.info('Please add JAR files to the jars/ directory');
     missing = true;
+  } else {
+    log.info(`Found ${JAR_FILES.length} JAR file(s): ${JAR_FILES.map(j => path.basename(j)).join(', ')}`);
   }
 
   if (missing) {
