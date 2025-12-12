@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+jdk-downloads/
+jre-builds/
+portable-releases/
+
+# Module files
+*-modules.txt
+custom-modules.txt
+
+# JAR files (optional - uncomment to track)
+# *.jar
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml

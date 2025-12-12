@@ -1,0 +1,51 @@
+{
+  "name": "multi-platform-jre-builder",
+  "version": "1.0.0",
+  "description": "Build minimal JREs and portable packages for all platforms",
+  "scripts": {
+    "analyze": "node analyze-jar.js",
+    "analyze:folder": "node analyze-jar.js jars",
+    "download": "node download-jdks.js",
+    "download:11": "set JDK_VERSION=11&& node download-jdks.js",
+    "download:16": "set JDK_VERSION=16&& node download-jdks.js",
+    "download:17": "set JDK_VERSION=17&& node download-jdks.js",
+    "download:18": "set JDK_VERSION=18&& node download-jdks.js",
+    "download:19": "set JDK_VERSION=19&& node download-jdks.js",
+    "download:20": "set JDK_VERSION=20&& node download-jdks.js",
+    "download:21": "node download-jdks.js",
+    "build-jre": "node build-jre-all-platforms.js",
+    "build-jre:11": "set JDK_VERSION=11&& node build-jre-all-platforms.js",
+    "build-jre:16": "set JDK_VERSION=16&& node build-jre-all-platforms.js",
+    "build-jre:17": "set JDK_VERSION=17&& node build-jre-all-platforms.js",
+    "build-jre:18": "set JDK_VERSION=18&& node build-jre-all-platforms.js",
+    "build-jre:19": "set JDK_VERSION=19&& node build-jre-all-platforms.js",
+    "build-jre:20": "set JDK_VERSION=20&& node build-jre-all-platforms.js",
+    "build-jre:21": "set JDK_VERSION=21&& node build-jre-all-platforms.js",
+    "build-jre:windows": "node build-jre-all-platforms.js windows-x64",
+    "build-jre:windows-arm": "node build-jre-all-platforms.js windows-arm64",
+    "build-jre:mac-x64": "node build-jre-all-platforms.js macos-x64",
+    "build-jre:mac-arm": "node build-jre-all-platforms.js macos-arm64",
+    "build-jre:linux": "node build-jre-all-platforms.js linux-x64",
+    "build-jre:linux-arm": "node build-jre-all-platforms.js linux-arm64",
+    "build-portable": "node create-portable.js",
+    "build-all": "npm run download && npm run build-jre && npm run build-portable",
+    "clean": "node -e \"const fs=require('fs'); ['jdk-downloads','jre-builds','portable-releases'].forEach(d=>fs.existsSync(d)&&fs.rmSync(d,{recursive:true,force:true}))\""
+  },
+  "keywords": [
+    "jre",
+    "jlink",
+    "portable",
+    "java",
+    "cross-platform"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "archiver": "^6.0.1",
+    "tar": "^6.2.0",
+    "adm-zip": "^0.5.10"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

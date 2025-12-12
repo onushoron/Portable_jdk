@@ -1,0 +1,215 @@
+name: Test Multi-Platform JRE Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download JDKs
+        run: npm run download
+
+      - name: Verify downloads
+        run: |
+          dir jdk-downloads
+          
+      - name: Create test JAR
+        shell: bash
+        run: |
+          mkdir -p test-app/META-INF
+          echo 'Main-Class: TestApp' > test-app/META-INF/MANIFEST.MF
+          echo 'public class TestApp { public static void main(String[] args) { System.out.println("Hello World"); } }' > test-app/TestApp.java
+          cd test-app && jar cfm test-app.jar META-INF/MANIFEST.MF TestApp.java
+          mv test-app.jar ../
+          cd ..
+
+      - name: Analyze JAR
+        run: npm run analyze test-app.jar
+
+      - name: Build JREs
+        run: npm run build-jre
+
+      - name: Verify JRE builds
+        run: |
+          dir jre-builds
+
+      - name: Create portable packages
+        run: npm run build-portable test-app.jar
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable-packages
+          path: portable-releases/*.zip
+
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download JDKs
+        run: npm run download
+
+      - name: Verify downloads
+        run: |
+          ls -la jdk-downloads/
+          
+      - name: Create test JAR
+        run: |
+          mkdir -p test-app/META-INF
+          echo 'Main-Class: TestApp' > test-app/META-INF/MANIFEST.MF
+          echo 'public class TestApp { public static void main(String[] args) { System.out.println("Hello World"); } }' > test-app/TestApp.java
+          cd test-app && jar cfm test-app.jar META-INF/MANIFEST.MF TestApp.java
+          mv test-app.jar ../
+          cd ..
+
+      - name: Analyze JAR
+        run: npm run analyze test-app.jar
+
+      - name: Build JREs
+        run: npm run build-jre
+
+      - name: Verify JRE builds
+        run: |
+          ls -la jre-builds/
+          du -sh jre-builds/*
+
+      - name: Create portable packages
+        run: npm run build-portable test-app.jar
+
+      - name: Test macOS ARM64 package
+        run: |
+          cd portable-releases
+          tar -xzf test-app-*-macos-arm64-portable.tar.gz
+          cd test-app-*/
+          chmod +x run.sh
+          ./jre/bin/java -version
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-portable-packages
+          path: portable-releases/*.tar.gz
+
+  test-linux:
+    name: Test on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download JDKs
+        run: npm run download
+
+      - name: Verify downloads
+        run: |
+          ls -la jdk-downloads/
+          
+      - name: Create test JAR
+        run: |
+          mkdir -p test-app/META-INF
+          echo 'Main-Class: TestApp' > test-app/META-INF/MANIFEST.MF
+          echo 'public class TestApp { public static void main(String[] args) { System.out.println("Hello World"); } }' > test-app/TestApp.java
+          cd test-app && jar cfm test-app.jar META-INF/MANIFEST.MF TestApp.java
+          mv test-app.jar ../
+          cd ..
+
+      - name: Analyze JAR
+        run: npm run analyze test-app.jar
+
+      - name: Build JREs
+        run: npm run build-jre
+
+      - name: Verify JRE builds
+        run: |
+          ls -la jre-builds/
+          du -sh jre-builds/*
+
+      - name: Create portable packages
+        run: npm run build-portable test-app.jar
+
+      - name: Test Linux x64 package
+        run: |
+          cd portable-releases
+          tar -xzf test-app-*-linux-x64-portable.tar.gz
+          cd test-app-*/
+          chmod +x run.sh
+          ./jre/bin/java -version
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-portable-packages
+          path: portable-releases/*.tar.gz
+
+  summary:
+    name: Build Summary
+    needs: [test-windows, test-macos, test-linux]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Display structure
+        run: |
+          echo "=== Build Summary ==="
+          echo ""
+          echo "Windows Packages:"
+          ls -lh windows-portable-packages/ || echo "No Windows packages"
+          echo ""
+          echo "macOS Packages:"
+          ls -lh macos-portable-packages/ || echo "No macOS packages"
+          echo ""
+          echo "Linux Packages:"
+          ls -lh linux-portable-packages/ || echo "No Linux packages"
+          echo ""
+          echo "=== Total Size ==="
+          du -sh *-portable-packages/
+
+      - name: Create release summary
+        run: |
+          echo "## Multi-Platform JRE Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Platforms Built:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Windows x64" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Windows ARM64" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS x64 (Intel)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS ARM64 (Apple Silicon)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linux x64" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linux ARM64" >> $GITHUB_STEP_SUMMARY

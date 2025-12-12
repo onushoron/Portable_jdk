@@ -1,0 +1,130 @@
+name: Build Multi-Platform JRE
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      jdk_version:
+        description: 'JDK Version to build'
+        required: true
+        default: '17'
+        type: choice
+        options:
+          - '11'
+          - '16'
+          - '17'
+          - '18'
+          - '19'
+          - '20'
+          - '21'
+
+jobs:
+  build-jre:
+    name: Build JRE on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        jdk_version: ['17']  # Default version, can be overridden by workflow_dispatch
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Analyze JARs
+        run: npm run analyze
+        continue-on-error: true
+      
+      - name: Download JDK (Windows)
+        if: runner.os == 'Windows'
+        run: npm run download:${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+        env:
+          JDK_VERSION: ${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+      
+      - name: Download JDK (Unix)
+        if: runner.os != 'Windows'
+        run: npm run download:${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+        env:
+          JDK_VERSION: ${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+        shell: bash
+      
+      - name: Build JRE (Windows)
+        if: runner.os == 'Windows'
+        run: npm run build-jre:${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+        env:
+          JDK_VERSION: ${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+      
+      - name: Build JRE (Unix)
+        if: runner.os != 'Windows'
+        run: npm run build-jre:${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+        env:
+          JDK_VERSION: ${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+        shell: bash
+      
+      - name: Create portable packages
+        run: npm run build-portable
+      
+      - name: List built JREs
+        run: |
+          echo "=== Built JREs ==="
+          ls -lh jre-builds/ || dir jre-builds\
+        shell: bash
+        continue-on-error: true
+      
+      - name: Upload JRE artifacts (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jre-windows-${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+          path: |
+            jre-builds/jre-win-x64/
+            jre-builds/jre-win-arm64/
+            portable-releases/*windows*.zip
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: Upload JRE artifacts (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jre-macos-${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+          path: |
+            jre-builds/jre-mac-x64/
+            jre-builds/jre-mac-arm64/
+            portable-releases/*mac*.tar.gz
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: Upload JRE artifacts (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jre-linux-${{ github.event.inputs.jdk_version || matrix.jdk_version }}
+          path: |
+            jre-builds/jre-linux-x64/
+            jre-builds/jre-linux-arm64/
+            portable-releases/*linux*.tar.gz
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: Display build summary
+        run: |
+          echo "### Build Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "**JDK Version:** ${{ github.event.inputs.jdk_version || matrix.jdk_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Built JREs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+        shell: bash
