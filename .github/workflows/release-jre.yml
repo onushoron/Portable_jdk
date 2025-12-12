@@ -51,9 +51,7 @@ jobs:
       
       - name: Build JRE (Windows - Native Only)
         if: runner.os == 'Windows'
-        run: |
-          npm run build-jre:windows
-          npm run build-jre:windows-arm
+        run: npm run build-jre:windows
         env:
           JDK_VERSION: ${{ github.event.inputs.jdk_version || '17' }}
       
@@ -67,9 +65,7 @@ jobs:
       
       - name: Build JRE (Linux - Native Only)
         if: runner.os == 'Linux'
-        run: |
-          npm run build-jre:linux
-          npm run build-jre:linux-arm
+        run: npm run build-jre:linux
         env:
           JDK_VERSION: ${{ github.event.inputs.jdk_version || '17' }}
       
